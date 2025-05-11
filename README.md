@@ -16,10 +16,15 @@ OUTPUT          Path to an output file or directory
 OPTIONS:
 
 --log [LOGFILE]        Write detailed changes to LOGFILE. If no name is given, a timestamped default name is used.
+
 --backup DIR           Back up original files (preserving subdirectories) to the specified directory when changes occur.
+
 --pattern PATTERN      Glob pattern to select files, for example "*.csv" (default).
+
 --zip ZIPFILE          Compress all cleaned output into the given ZIP file.
+
 --only-changed         Only write output files for inputs that had modifications. Unchanged files are skipped.
+
 --verbose              Print the line numbers of modified rows to the console.
 
 
