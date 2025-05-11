@@ -8,7 +8,7 @@ from core import process_file, gather_files
 def main():
     parser = argparse.ArgumentParser(
         prog="csv-cleaner",
-        description="Clean CSVs: remove CRLF, newlines, NBSP; optional log, backup, zip, verbose."
+        description="Clean CSVs: remove CRLF, newlines, NBSP; optional log, backup, zip, verbose, only-changed."
     )
     parser.add_argument("input", help="Input file or directory")
     parser.add_argument("output", help="Output file or directory")
@@ -19,6 +19,10 @@ def main():
     parser.add_argument("--backup", help="Optional backup directory")
     parser.add_argument("--pattern", default="*.csv", help="File glob pattern (default: '*.csv')")
     parser.add_argument("--zip", dest="zip_out", help="Optional ZIP for cleaned output")
+    parser.add_argument(
+        "--only-changed", action="store_true",
+        help="Only write output files if modifications occurred"
+    )
     parser.add_argument("--verbose", action="store_true", help="Print modified line numbers")
     args = parser.parse_args()
 
@@ -38,19 +42,19 @@ def main():
         rel = f.relative_to(inp) if inp.is_dir() else Path(f.name)
         target = (out / rel) if inp.is_dir() else out
         target.parent.mkdir(parents=True, exist_ok=True)
-        process_file(
+        changed = process_file(
             f, target,
             log_fp=log_fp,
             backup_dir=Path(args.backup) if args.backup else None,
             verbose=args.verbose,
-            input_root=inp if args.backup else None
+            input_root=inp if args.backup else None,
+            only_changed=args.only_changed
         )
-        print(f"Processed: {f}")
+        print(f"{'✔' if changed else '–'} {f}")
 
     # Finish logging
     if log_fp:
         log_fp.close()
-        # Zip and remove raw log
         log_zip = Path(args.log).with_suffix('.zip')
         with zipfile.ZipFile(log_zip, 'w', zipfile.ZIP_DEFLATED) as z:
             z.write(args.log, Path(args.log).name)

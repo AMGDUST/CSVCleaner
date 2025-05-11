@@ -11,7 +11,7 @@ class CSVCleanerGUI(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("CSV Cleaner")
-        self.geometry("600x400")
+        self.geometry("600x420")
 
         # Input selector
         tk.Label(self, text="Input:").grid(row=0, column=0, sticky="e")
@@ -31,6 +31,7 @@ class CSVCleanerGUI(tk.Tk):
         self.backup_var = tk.StringVar()
         self.pattern_var = tk.StringVar(value="*.csv")
         self.zip_var = tk.StringVar()
+        self.only_changed = tk.BooleanVar()
         self.verbose = tk.BooleanVar()
 
         opts = [
@@ -43,7 +44,8 @@ class CSVCleanerGUI(tk.Tk):
             tk.Label(self, text=f"{label}:").grid(row=i, column=0, sticky="e")
             tk.Entry(self, textvariable=var, width=40).grid(row=i, column=1, columnspan=2, sticky="w")
 
-        tk.Checkbutton(self, text="Verbose Mode", variable=self.verbose).grid(row=6, column=1, sticky="w")
+        tk.Checkbutton(self, text="Only Changed", variable=self.only_changed).grid(row=6, column=1, sticky="w")
+        tk.Checkbutton(self, text="Verbose Mode", variable=self.verbose).grid(row=6, column=2, sticky="w")
 
         # Console
         self.console = scrolledtext.ScrolledText(self, state="disabled", height=10)
@@ -74,13 +76,14 @@ class CSVCleanerGUI(tk.Tk):
             "backup": Path(self.backup_var.get()) if self.backup_var.get() else None,
             "pattern": self.pattern_var.get(),
             "zip_out": self.zip_var.get() or None,
+            "only_changed": self.only_changed.get(),
             "verbose": self.verbose.get()
         }
         threading.Thread(target=self._worker, args=(args,), daemon=True).start()
 
     def _worker(self, args):
         try:
-            # Logging
+            # Logging setup
             if args["log"]:
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                 log_name = args["log"] if Path(args["log"]).suffix else f"{args['log']}_{timestamp}.log"
@@ -98,7 +101,8 @@ class CSVCleanerGUI(tk.Tk):
                     log_fp=log_fp,
                     backup_dir=args["backup"],
                     verbose=args["verbose"],
-                    input_root=args["input"] if args["backup"] else None
+                    input_root=args["input"] if args["backup"] else None,
+                    only_changed=args["only_changed"]
                 )
                 self._log(f"{'✔' if changed else '–'} {f}")
 
