@@ -14,6 +14,7 @@ OUTPUT          Path to an output file or directory
 
 
 OPTIONS:
+
 --log [LOGFILE]        Write detailed changes to LOGFILE. If no name is given, a timestamped default name is used.
 --backup DIR           Back up original files (preserving subdirectories) to the specified directory when changes occur.
 --pattern PATTERN      Glob pattern to select files, for example "*.csv" (default).
@@ -27,27 +28,38 @@ Examples:
 
 
 Basic Cleanup:
+
 csv-cleaner raw.csv cleaned.csv
 
 
 Directory Cleanup with Logging:
+
 csv-cleaner data/raw_folder data/cleaned_folder --log
 
 
 Only Changed Files and Logging:
+
 csv-cleaner data/raw_folder data/cleaned_folder --only-changed --log
 
 
 Verbose Mode:
+
 csv-cleaner input.csv output.csv --verbose
 
 
 
 Features Summary:
+
 • Removes literal CRLF markers within CSV fields
+
 • Strips embedded newline and carriage return characters
+
 • Replaces non-breaking spaces with regular spaces
+
 • Optional timestamped logging with automatic compression and cleanup
+
 • Optional backup of original files, preserving directory structure
+
 • "Only Changed" mode to generate output only when modifications occur
+
 • "Verbose" mode for detailed console feedback
