@@ -5,16 +5,21 @@ import fnmatch
 
 def clean_field(field: str) -> (str, bool):
     """
-    Clean a single CSV field by removing CRLF literals, newlines, carriage returns,
-    and non-breaking spaces. Returns the cleaned field and a flag indicating change.
+    Clean a single CSV field by removing:
+      - Literal "CRLF"
+      - Carriage returns (\r)
+      - Newlines (\n)
+      - Non-breaking spaces (\u00A0)
+    Returns the cleaned field and a flag indicating whether it changed.
     """
     cleaned = (
-        field.replace("CRLF", " ")
-             .replace("\r", "")
-             .replace("\n", " ")
-             .replace("\u00A0", " ")
+        field
+        .replace("CRLF", " ")
+        .replace("\r", "")
+        .replace("\n", " ")
+        .replace("\u00A0", " ")
     )
-    return cleaned, cleaned != field
+    return cleaned, (cleaned != field)
 
 def process_file(
     input_file: Path,
@@ -26,22 +31,24 @@ def process_file(
     only_changed: bool=False
 ) -> bool:
     """
-    Process one CSV file: clean fields, write to output_file.
-    If only_changed=True, remove output if no modifications.
-    Optionally back up the original (preserving directory tree) only if modifications occurred.
-    Log changes if log_fp provided. Returns True if any field was modified.
+    Process one CSV file:
+    - Clean fields
+    - Remove trailing empty columns
+    - Optionally backup original when modifications occur
+    - Optionally log changes
+    - Optionally skip writing output if no changes and only_changed=True
+    Returns True if any changes were made.
     """
     modified = False
+    cleaned_rows = []
 
-    # Read and write
-    with input_file.open(newline='', encoding='utf-8') as inf, \
-         output_file.open('w', newline='', encoding='utf-8') as outf:
+    # Read and clean fields
+    with input_file.open(newline='', encoding='utf-8') as inf:
         reader = csv.reader(inf)
-        writer = csv.writer(outf)
-
         for lineno, row in enumerate(reader, start=1):
-            row_changed = False
             new_row = []
+            row_changed = False
+
             for field in row:
                 cleaned, changed = clean_field(field)
                 new_row.append(cleaned)
@@ -49,25 +56,38 @@ def process_file(
                     modified = True
                     row_changed = True
                     if log_fp:
-                        log_fp.write(f"{input_file}:{lineno} | {field!r} → {cleaned!r}\n")
-            writer.writerow(new_row)
+                        log_fp.write(f"{input_file}:{lineno} | {field!r} -> {cleaned!r}\n")
+
             if verbose and row_changed:
                 print(f"Modified line {lineno} in {input_file}")
 
-    # If only_changed is set and no modifications, delete the empty output
+            # Remove any trailing empty columns
+            while new_row and new_row[-1] == "":
+                new_row.pop()
+                modified = True
+                if log_fp:
+                    log_fp.write(f"{input_file}:{lineno} | Removed trailing empty column\n")
+                if verbose:
+                    print(f"Removed trailing empty column at line {lineno} in {input_file}")
+
+            cleaned_rows.append(new_row)
+
+    # Skip writing if only_changed=True and nothing was modified
     if only_changed and not modified:
-        try:
-            output_file.unlink()
-        except Exception:
-            pass
-    else:
-        # Backup original only if changes occurred
-        if modified and backup_dir and input_root:
-            rel_path = input_file.relative_to(input_root)
-            target = backup_dir / rel_path
-            target.parent.mkdir(parents=True, exist_ok=True)
-            if not target.exists():
-                shutil.copy2(input_file, target)
+        return False
+
+    # Backup original if requested and modifications occurred
+    if modified and backup_dir and input_root:
+        rel_path = input_file.relative_to(input_root)
+        target = backup_dir / rel_path
+        target.parent.mkdir(parents=True, exist_ok=True)
+        if not target.exists():
+            shutil.copy2(input_file, target)
+
+    # Write cleaned rows out
+    with output_file.open('w', newline='', encoding='utf-8') as outf:
+        writer = csv.writer(outf)
+        writer.writerows(cleaned_rows)
 
     return modified
 
